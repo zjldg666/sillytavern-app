@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/SillyTavern/SillyTavern.git",
+  "tag": "1.19.0",
+  "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+  "packageLockSha256": "5f63dcddc2a4ae2d6f16d77e4295c8bdc898acf0fdc8c035b8ec5ad742d2a80c",
+  "license": "AGPL-3.0",
+  "sourceDirectory": ".tools/upstream-sillytavern",
+  "minimumNodeMajor": 20,
+  "patches": []
+}

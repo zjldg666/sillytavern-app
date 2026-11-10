@@ -1,0 +1,23 @@
+{
+  "scope": "isolated-test-environment-only",
+  "extensions": [
+    {
+      "directory": "JS-Slash-Runner",
+      "name": "酒馆助手",
+      "repository": "https://github.com/N0VI028/JS-Slash-Runner.git",
+      "version": "4.12.0",
+      "commit": "40e4b72d0e6abbe158fec85080cb93a5de9431ae",
+      "entrySha256": "d6b158cd243fe6c6423a69fd6dacd791dd248980947186e54166b42488e18de4",
+      "license": "PolyForm-Noncommercial-1.0.0"
+    },
+    {
+      "directory": "ST-Prompt-Template",
+      "name": "提示词模板",
+      "repository": "https://github.com/zonde306/ST-Prompt-Template.git",
+      "version": "1.17.9",
+      "commit": "d6f520d149aba146305b0b781ddd691d449c28d2",
+      "entrySha256": "07190addbae12f348cb7944de1d5a125e1c1f686dd82540721ae58c8868a63e3",
+      "license": "AGPL-3.0"
+    }
+  ]
+}

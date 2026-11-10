@@ -1,0 +1,4 @@
+<resources>
+    <color name="jg_background">@color/jg_dark_background</color>
+    <color name="jg_accent">@color/jg_dark_accent</color>
+</resources>

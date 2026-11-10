@@ -1,0 +1,14 @@
+<resources>
+    <!-- 与手机扩展 style.css 的两套主题保持一致；代码按用户选择使用 light / dark 组。 -->
+    <color name="jg_light_background">#F6F4F0</color>
+    <color name="jg_light_text">#1D1B18</color>
+    <color name="jg_light_muted">#6B665E</color>
+    <color name="jg_light_accent">#9C6328</color>
+    <color name="jg_dark_background">#141312</color>
+    <color name="jg_dark_text">#ECE8E1</color>
+    <color name="jg_dark_muted">#A8A196</color>
+    <color name="jg_dark_accent">#D9A766</color>
+    <!-- 启动窗口跟随系统深浅色，网页加载后由用户设置接管。 -->
+    <color name="jg_background">@color/jg_light_background</color>
+    <color name="jg_accent">@color/jg_light_accent</color>
+</resources>

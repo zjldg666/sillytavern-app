@@ -1,0 +1,33 @@
+{
+  "name": "jiuguan",
+  "version": "1.2.6",
+  "private": true,
+  "type": "module",
+  "description": "原生 Android + Node.js 的原版 SillyTavern 宿主",
+  "scripts": {
+    "upstream:prepare": "node scripts/upstream/prepare.mjs",
+    "upstream:smoke": "node scripts/upstream/smoke.mjs",
+    "upstream:pack": "node scripts/upstream/pack.mjs",
+    "android:assets": "node scripts/upstream/prepare-android.mjs",
+    "android:smoke": "node scripts/upstream/app-smoke.mjs",
+    "android:ui": "node scripts/upstream/app-webview-smoke.mjs",
+    "test:mobile-ui": "node scripts/upstream/mobile-generation-regression.mjs",
+    "test:world-info-mobile": "node scripts/upstream/world-info-mobile-checks.mjs",
+    "test:world-info-scope": "node scripts/upstream/world-info-scope-checks.mjs",
+    "test:preset-mobile": "node scripts/upstream/preset-mobile-checks.mjs",
+    "test:compact-ui": "node scripts/upstream/compact-ui-checks.mjs",
+    "test:extensions-lab": "node scripts/upstream/extensions-lab-smoke.mjs",
+    "extensions:prepare": "node scripts/upstream/prepare-extensions-sources.mjs",
+    "android:extensions": "node scripts/upstream/app-extensions-smoke.mjs",
+    "android:inspect": "node scripts/upstream/inspect-apk.mjs"
+  },
+  "dependencies": {
+    "yaml": "2.8.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
