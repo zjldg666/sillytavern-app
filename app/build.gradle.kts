@@ -42,7 +42,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-dev"
-            resValue("string", "app_name", "酒馆（开发版）")
+            resValue("string", "app_name", "Sillytavern App（开发版）")
         }
         release {
             isMinifyEnabled = false

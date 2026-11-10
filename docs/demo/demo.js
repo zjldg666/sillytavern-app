@@ -6,19 +6,23 @@ const stories = [
 const transcript=document.querySelector('#transcript');
 const input=document.querySelector('#message');
 const send=document.querySelector('.send-button');
+const portraits=['lin-portrait.webp','star-portrait.webp','night-portrait.webp'];
+function portrait(index,className=''){
+  const img=document.createElement('img');img.src=`../images/${portraits[index]}`;img.alt='';img.className=className;img.width=48;img.height=48;return img;
+}
 let current=0;
 function icon(name){return `<svg aria-hidden="true"><use href="#${name}"/></svg>`;}
 function message(kind,text,time='20:16'){
   const item=document.createElement('article');item.className=`message ${kind}`;
   const label=document.createElement('div');label.className='message-label';
   const name=document.createElement('span');name.textContent=kind==='user'?'我':stories[current].title;
-  const clock=document.createElement('time');clock.textContent=time;label.append(name,clock);item.append(label);
+  const clock=document.createElement('time');clock.textContent=time;if(kind==='assistant')label.append(portrait(current,'message-avatar'));label.append(name,clock);item.append(label);
   for(const [i,line] of text.entries()){const p=document.createElement('p');p.textContent=line;if(kind==='assistant'&&i===0)p.className='narration';item.append(p);}
   return item;
 }
 function openStory(index){
   current=index;const story=stories[index];input.value='';send.disabled=true;
-  document.querySelector('#chat-title').textContent=story.title;document.querySelector('.chat-avatar').textContent=story.initial;
+  document.querySelector('#chat-title').textContent=story.title;document.querySelector('.chat-avatar').replaceChildren(portrait(index));
   transcript.replaceChildren();
   const date=document.createElement('div');date.className='date-divider';date.textContent='一段故事，从这里开始';transcript.append(date);
   const chapter=document.createElement('div');chapter.className='story-heading';chapter.innerHTML=icon('leaf');chapter.append(story.chapter);transcript.append(chapter);
@@ -30,7 +34,8 @@ function openStory(index){
 for(const nav of document.querySelectorAll('.conversations')){
   for(const [i,story] of stories.entries()){
     const b=document.createElement('button');b.className='conversation';b.dataset.story=i;
-    b.innerHTML=`<span class="initial">${story.initial}</span><span><strong>${story.title}</strong><small>${story.caption}</small></span>`;
+    b.innerHTML=`<span class="initial"></span><span><strong>${story.title}</strong><small>${story.caption}</small></span>`;
+    b.querySelector('.initial').append(portrait(i));
     b.addEventListener('click',()=>{openStory(i);document.querySelector('#chat-dialog').close();});nav.append(b);
   }
 }

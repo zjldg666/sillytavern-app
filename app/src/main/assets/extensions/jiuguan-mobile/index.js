@@ -433,7 +433,7 @@
             row.dataset.panel = drawer.id; group.append(row);
         }
         more.append(group); content.append(more);
-        content.append(node('p', 'jg-version', '酒馆 · SillyTavern 1.19.0'));
+        content.append(node('p', 'jg-version', 'Sillytavern App · SillyTavern 1.19.0'));
     }
 
     async function guarded(action) {

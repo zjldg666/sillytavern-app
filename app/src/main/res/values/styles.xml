@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">酒馆</string>
+    <string name="app_name">Sillytavern App</string>
     <style name="AppThemeBase" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/jg_accent</item>

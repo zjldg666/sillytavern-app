@@ -40,7 +40,7 @@ $env:JIUGUAN_NODE = 'C:/Program Files/nodejs/node.exe'
 .\gradlew.bat :app:assembleDebug :app:lintDebug "-PnodeExecutable=$env:JIUGUAN_NODE"
 ```
 
-输出：`app/build/outputs/apk/debug/app-debug.apk`。包名：`io.jiuguan.mobile.debug`；名称：酒馆（开发版）。
+输出：`app/build/outputs/apk/debug/app-debug.apk`。包名：`io.jiuguan.mobile.debug`；名称：Sillytavern App（开发版）。
 
 首次构建自动生成 `.tools/android-debug.keystore`。不同机器的密钥可能不同，更新已有安装前先核对签名。Android Studio 中打开仓库根目录、选择 JDK 21、同步 Gradle，选择 app 的 debug 变体即可运行。
 

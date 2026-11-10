@@ -136,7 +136,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
             setPadding(32, 32, 32, 32)
         }
-        title = TextView(this).apply { text = "酒馆"; textSize = 28f; gravity = Gravity.CENTER }
+        title = TextView(this).apply { text = "Sillytavern App"; textSize = 28f; gravity = Gravity.CENTER }
         status.addView(title)
         progress = ProgressBar(this)
         status.addView(progress, LinearLayout.LayoutParams(72, 72).apply { gravity = Gravity.CENTER; topMargin = 40; bottomMargin = 28 })
@@ -146,7 +146,7 @@ class MainActivity : Activity() {
         status.addView(retry)
         root.addView(status, FrameLayout.LayoutParams(-1, -1))
         applyChrome()
-        showStatus("正在准备酒馆…", false)
+        showStatus("正在准备 Sillytavern App…", false)
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 20)
         }
@@ -223,7 +223,7 @@ class MainActivity : Activity() {
         if (state.phase == "running" && state.url != null) {
             if (origin != state.url) {
                 origin = state.url
-                showStatus("正在打开酒馆…", false)
+                showStatus("正在打开 Sillytavern App…", false)
                 web.loadUrl(state.url)
             } else status.visibility = View.GONE
         } else showStatus(state.message, state.phase == "error" || state.phase == "stopped")

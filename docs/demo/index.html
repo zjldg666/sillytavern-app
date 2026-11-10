@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>酒馆 · 聊天界面演示</title>
+  <title>Sillytavern App · 聊天界面演示</title>
   <link rel="stylesheet" href="style.css">
   <script src="demo.js" defer></script>
 </head>
@@ -22,7 +22,7 @@
   </svg>
   <main class="app">
     <aside class="sidebar" aria-label="演示会话">
-      <a class="brand" href="https://github.com/zjldg666/jiuguan"><span class="brand-mark">酒</span><span>酒馆<small>JIUGUAN</small></span></a>
+      <a class="brand" href="https://github.com/zjldg666/sillytavern-app"><span class="brand-mark">S</span><span>Sillytavern<small>APP</small></span></a>
       <div class="sidebar-intro">留一点时间，<br>给故事。</div>
       <p class="section-caption">演示会话</p>
       <nav class="conversations" aria-label="选择演示会话"></nav>
@@ -44,11 +44,11 @@
           <textarea id="message" rows="1" maxlength="600" placeholder="写下你的下一句…" aria-label="消息内容"></textarea>
           <button type="submit" class="send-button" aria-label="发送演示消息" disabled><svg><use href="#send"/></svg></button>
         </form>
-        <p class="demo-caption">酒馆 <span>·</span> 本地交互演示，未连接模型 API</p>
+        <p class="demo-caption">Sillytavern App <span>·</span> 本地交互演示，未连接模型 API</p>
       </footer>
     </section>
   </main>
-  <dialog id="info-dialog"><div class="dialog-body"><span class="eyebrow">ABOUT THIS DEMO</span><h2>只是一段演示。</h2><p>这里使用原创合成对话，展示酒馆的聊天阅读体验。发送内容只存在当前页面，回复为预置文本，不会调用模型 API。</p><p>这是独立的 README 演示前端，不是 Android 实机截图，也不作为 App 功能验收证据。</p><button class="dialog-close">知道了</button></div></dialog>
+  <dialog id="info-dialog"><div class="dialog-body"><span class="eyebrow">ABOUT THIS DEMO</span><h2>只是一段演示。</h2><p>这里使用原创合成对话与 AI 生成的原创角色肖像，展示 Sillytavern App 的聊天阅读体验。发送内容只存在当前页面，回复为预置文本，不会调用模型 API。</p><p>这是独立的 README 演示前端，不是 Android 实机截图，也不作为 App 功能验收证据。</p><button class="dialog-close">知道了</button></div></dialog>
   <dialog id="chat-dialog"><div class="dialog-body"><h2>选择一段故事</h2><nav class="conversations"></nav><button class="dialog-close">返回</button></div></dialog>
 </body>
 </html>

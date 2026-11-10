@@ -1,26 +1,28 @@
 <div align="center">
 
-# 酒馆 · Jiuguan
+# Sillytavern App
 
 **把 SillyTavern 装进口袋。**
 
 在 Android 手机上运行原版 SillyTavern 前后端，配上为触屏重新整理的中文界面。
 
-[下载 APK](https://github.com/zjldg666/jiuguan/releases) · [构建说明](docs/ANDROID-BUILD.md) · [实测记录](docs/UPSTREAM-STATUS.md) · [反馈问题](https://github.com/zjldg666/jiuguan/issues)
+[下载 APK](https://github.com/zjldg666/sillytavern-app/releases) · [构建说明](docs/ANDROID-BUILD.md) · [实测记录](docs/UPSTREAM-STATUS.md) · [反馈问题](https://github.com/zjldg666/sillytavern-app/issues)
 
 Android 8.0+ · arm64-v8a · Kotlin / WebView / Node.js
 
 </div>
 
+![Sillytavern App 原创概念插画：雨夜的书架、灯光与一杯热茶](docs/images/tavern-cover.webp)
+
 ## 一个 APK，手机自己运行
 
-酒馆将 Android 原生外壳、Node.js 运行时和 SillyTavern 前后端打包在一起。安装后，App 自动启动手机本地服务，再用 WebView 打开界面；日常使用不需要电脑、手动安装 Termux 或输入启动命令。
+Sillytavern App 将 Android 原生外壳、Node.js 运行时和 SillyTavern 前后端打包在一起。安装后，App 自动启动手机本地服务，再用 WebView 打开界面；日常使用不需要电脑、手动安装 Termux 或输入启动命令。
 
 模型由你选择和配置。App 不包含大模型权重，也不提供免费模型额度；使用远程模型时仍需要网络和相应 API 服务。
 
 ## 聊天界面演示
 
-白天的暖白、黑夜的暖炭黑，配上一点琥珀色。以下为独立 README 演示页的浏览器截图，使用原创合成对话，不使用第三方角色卡或私人聊天。**这是界面演示，不是 Android 实机截图，也不代表 App 功能验收。**
+白天的暖白、黑夜的暖炭黑，配上一点琥珀色。以下为独立 README 演示页的浏览器截图，使用原创合成对话与 AI 生成的原创角色肖像，不使用第三方角色卡或私人聊天。**这是界面演示，不是 Android 实机截图，也不代表 App 功能验收。**
 
 <p align="center">
   <img src="docs/images/demo-chat-light.png" width="42%" alt="白天模式聊天演示，原创合成对话" />
@@ -30,6 +32,18 @@ Android 8.0+ · arm64-v8a · Kotlin / WebView / Node.js
 <p align="center">白天 · 黑夜</p>
 
 打开本地 [演示页面](docs/demo/index.html) 可切换主题、选择三段故事并发送本地演示消息，无需 API Key。截图与演示说明见 [截图说明](docs/images/README.md)，正式包验证状态见 [1.2.17 发布说明](docs/RELEASE-1.2.17.md)。
+
+### 三段故事，三位同行者
+
+<p align="center">
+  <img src="docs/images/lin-portrait.webp" width="30%" alt="林间来信：雨天书店里的店主，AI 生成的原创角色" />
+  <img src="docs/images/star-portrait.webp" width="30%" alt="星际漫游：等待日出的领航员，AI 生成的原创角色" />
+  <img src="docs/images/night-portrait.webp" width="30%" alt="夜航笔记：灯下记录日常的写作者，AI 生成的原创角色" />
+</p>
+
+<p align="center">林间来信 · 星际漫游 · 夜航笔记</p>
+
+封面与角色肖像由 `gpt-image-2` 为本项目生成，仅作展示素材，不是内置角色卡或功能承诺。[生成提示词与来源记录](docs/images/README.md)。
 
 ## 可以做什么
 
@@ -45,7 +59,7 @@ Android 8.0+ · arm64-v8a · Kotlin / WebView / Node.js
 
 ## 下载与开始使用
 
-1. 打开 [Releases](https://github.com/zjldg666/jiuguan/releases)，下载 `jiuguan-版本号-arm64-v8a.apk`。
+1. 打开 [Releases](https://github.com/zjldg666/sillytavern-app/releases)，下载 `jiuguan-版本号-arm64-v8a.apk`。
 2. 在 Android 8.0 及以上的 arm64 设备上安装。首次打开需要展开内置资源，请等待启动完成。
 3. 进入 **设置 → 模型 API**，配置你使用的服务、模型和密钥。
 4. 在 **角色** 页导入自己的角色卡，打开角色后开始聊天；世界书、预设和扩展从设置进入。
@@ -53,6 +67,8 @@ Android 8.0+ · arm64-v8a · Kotlin / WebView / Node.js
 正式包名为 `io.jiuguan.mobile`，开发包名为 `io.jiuguan.mobile.debug`。两者可以共存，数据互相独立，不会自动迁移。更新同一应用需沿用原有签名；不要用卸载或清空数据处理签名冲突。
 
 下载页提供 SHA-256 校验文件。当前仅支持 arm64，尚未提供 x86 或 32 位 ARM 安装包。
+
+项目原名“酒馆 / Jiuguan”。现有 1.2.17 发布包保留原文件名与应用名称；源码中的显示名称已更新为 Sillytavern App，包名与签名保持兼容。
 
 ## 数据如何保存
 
@@ -65,8 +81,8 @@ SillyTavern 服务和数据位于手机应用私有目录，业务数据存放�
 开发工具：**Git、Node.js ≥ 20、JDK 21、Android SDK 35 / Build Tools 35.0.0**。项目自带 Gradle Wrapper。
 
 ```powershell
-git clone https://github.com/zjldg666/jiuguan.git
-cd jiuguan
+git clone https://github.com/zjldg666/sillytavern-app.git
+cd sillytavern-app
 npm ci
 npm run upstream:prepare
 npm run extensions:prepare
@@ -137,4 +153,4 @@ docs/                             构建、实测、发布与截图说明
 
 ## 反馈与参与
 
-欢迎通过 [Issues](https://github.com/zjldg666/jiuguan/issues) 提交问题。请附上应用版本、手机型号、Android 版本、复现步骤和已去除敏感信息的截图；兼容性问题请注明扩展与角色卡相关格式。请勿上传 API Key、私人聊天、签名文件或完整个人数据目录。
+欢迎通过 [Issues](https://github.com/zjldg666/sillytavern-app/issues) 提交问题。请附上应用版本、手机型号、Android 版本、复现步骤和已去除敏感信息的截图；兼容性问题请注明扩展与角色卡相关格式。请勿上传 API Key、私人聊天、签名文件或完整个人数据目录。
