@@ -31,7 +31,7 @@ Sillytavern App 将 Android 原生外壳、Node.js 运行时和 SillyTavern 前�
 
 <p align="center">白天 · 黑夜</p>
 
-打开本地 [演示页面](docs/demo/index.html) 可切换主题、选择三段故事并发送本地演示消息，无需 API Key。截图与演示说明见 [截图说明](docs/images/README.md)，正式包验证状态见 [1.2.17 发布说明](docs/RELEASE-1.2.17.md)。
+打开本地 [演示页面](docs/demo/index.html) 可切换主题、选择三段故事并发送本地演示消息，无需 API Key。截图与演示说明见 [截图说明](docs/images/README.md)，正式包验证状态见 [1.2.18 发布说明](docs/RELEASE-1.2.18.md)。
 
 ### 三段故事，三位同行者
 
@@ -59,7 +59,7 @@ Sillytavern App 将 Android 原生外壳、Node.js 运行时和 SillyTavern 前�
 
 ## 下载与开始使用
 
-1. 打开 [Releases](https://github.com/zjldg666/sillytavern-app/releases)，下载 `jiuguan-版本号-arm64-v8a.apk`。
+1. 打开 [Releases](https://github.com/zjldg666/sillytavern-app/releases)，下载 `sillytavern-app-版本号-arm64-v8a.apk`。当前正式版为 [1.2.18](https://github.com/zjldg666/sillytavern-app/releases/tag/v1.2.18)。
 2. 在 Android 8.0 及以上的 arm64 设备上安装。首次打开需要展开内置资源，请等待启动完成。
 3. 进入 **设置 → 模型 API**，配置你使用的服务、模型和密钥。
 4. 在 **角色** 页导入自己的角色卡，打开角色后开始聊天；世界书、预设和扩展从设置进入。
@@ -68,7 +68,7 @@ Sillytavern App 将 Android 原生外壳、Node.js 运行时和 SillyTavern 前�
 
 下载页提供 SHA-256 校验文件。当前仅支持 arm64，尚未提供 x86 或 32 位 ARM 安装包。
 
-项目原名“酒馆 / Jiuguan”。现有 1.2.17 发布包保留原文件名与应用名称；源码中的显示名称已更新为 Sillytavern App，包名与签名保持兼容。
+项目原名“酒馆 / Jiuguan”。从 1.2.18 起，安装包名称与应用显示名称统一为 Sillytavern App；包名与正式签名沿用旧版，可覆盖安装原正式版。
 
 ## 数据如何保存
 
@@ -107,7 +107,7 @@ $env:JIUGUAN_NODE = 'C:/Program Files/nodejs/node.exe'
 
 - 已有真机记录覆盖独立启动、角色导入、模拟模型普通/SSE 请求、聊天保存、强制停止后恢复，以及多轮界面和键盘检查。
 - 深色界面的历史验收覆盖 320–768px 布局、预设/世界书编辑、原版模型请求一致性，以及 vivo V2520A 上的安装版截图。
-- 具体版本、设备和未测范围见 [实测记录](docs/UPSTREAM-STATUS.md)；本次发布检查见 [1.2.17 发布说明](docs/RELEASE-1.2.17.md)。历史测试不自动代表每个新版本都已重新验收。
+- 具体版本、设备和未测范围见 [实测记录](docs/UPSTREAM-STATUS.md)；本次发布检查见 [1.2.18 发布说明](docs/RELEASE-1.2.18.md)。历史测试不自动代表每个新版本都已重新验收。
 
 准备好上游源码与 Chromium 后，可运行：
 

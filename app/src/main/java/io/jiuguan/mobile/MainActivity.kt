@@ -136,7 +136,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
             setPadding(32, 32, 32, 32)
         }
-        title = TextView(this).apply { text = "Sillytavern App"; textSize = 28f; gravity = Gravity.CENTER }
+        title = TextView(this).apply { text = getString(R.string.app_name); textSize = 28f; gravity = Gravity.CENTER }
         status.addView(title)
         progress = ProgressBar(this)
         status.addView(progress, LinearLayout.LayoutParams(72, 72).apply { gravity = Gravity.CENTER; topMargin = 40; bottomMargin = 28 })
