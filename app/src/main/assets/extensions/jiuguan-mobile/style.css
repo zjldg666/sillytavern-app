@@ -1,5 +1,12 @@
 /* 简约手机界面：暖白（白天）与暖炭黑（黑夜）两套配色，琥珀色只用于选中、开关和主要操作。
    只限定手机 UI 与原版界面外壳，不触碰角色消息中的自定义 HTML。主题由 html[data-jg-theme] 切换。 */
+.jg-app #jg-connection-note {
+    color: var(--jg-muted);
+    font-size: var(--jg-font-help);
+    line-height: 1.5;
+    margin-block: 8px;
+    overflow-wrap: anywhere;
+}
 :root.jg-app {
     color-scheme: dark;
     --jg-bg: #141312;

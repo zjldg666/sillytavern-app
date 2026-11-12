@@ -31,7 +31,7 @@ Sillytavern App 将 Android 原生外壳、Node.js 运行时和 SillyTavern 前�
 
 <p align="center">白天 · 黑夜</p>
 
-打开本地 [演示页面](docs/demo/index.html) 可切换主题、选择三段故事并发送本地演示消息，无需 API Key。截图与演示说明见 [截图说明](docs/images/README.md)，正式包验证状态见 [1.2.18 发布说明](docs/RELEASE-1.2.18.md)。
+打开本地 [演示页面](docs/demo/index.html) 可切换主题、选择三段故事并发送本地演示消息，无需 API Key。截图与演示说明见 [截图说明](docs/images/README.md)，正式包验证状态见 [1.2.20 发布说明](docs/RELEASE-1.2.20.md)。
 
 ### 三段故事，三位同行者
 
@@ -47,7 +47,8 @@ Sillytavern App 将 Android 原生外壳、Node.js 运行时和 SillyTavern 前�
 
 ## 可以做什么
 
-- **管理角色与会话**：角色卡列表、搜索与导入入口，最近聊天、会话备注和删除操作。
+- **管理角色与会话**：角色卡列表、搜索与导入入口，最近聊天、会话备注和删除操作；新建独立会话前确认旧记录已保存，减少重复历史加载。
+- **管理连接方案**：保存或切换前检查未提交密钥与正在进行的连接；密钥标签跟随方案名称，明确提示共享字段。
 - **使用原版生成能力**：沿用 SillyTavern 的模型连接、普通与 SSE 流式回复、预设和提示词机制。
 - **编辑世界书与预设**：世界书拥有独立底部导航与可搜索书库；全局启用、角色绑定和编辑操作区分清晰，保留原版保存逻辑与数据格式。
 - **使用常用扩展**：固定版本内置酒馆助手 4.12.0、提示词模板 1.17.9；可从原版扩展面板管理。
@@ -59,7 +60,7 @@ Sillytavern App 将 Android 原生外壳、Node.js 运行时和 SillyTavern 前�
 
 ## 下载与开始使用
 
-1. 打开 [Releases](https://github.com/zjldg666/sillytavern-app/releases)，下载 `sillytavern-app-版本号-arm64-v8a.apk`。当前正式版为 [1.2.18](https://github.com/zjldg666/sillytavern-app/releases/tag/v1.2.18)。
+1. 打开 [Releases](https://github.com/zjldg666/sillytavern-app/releases)，下载 `sillytavern-app-版本号-arm64-v8a.apk`。当前正式版为 [1.2.20](https://github.com/zjldg666/sillytavern-app/releases/tag/v1.2.20)。
 2. 在 Android 8.0 及以上的 arm64 设备上安装。首次打开需要展开内置资源，请等待启动完成。
 3. 进入 **设置 → 模型 API**，配置你使用的服务、模型和密钥。
 4. 在 **角色** 页导入自己的角色卡，打开角色后开始聊天；世界书、预设和扩展从设置进入。
@@ -107,7 +108,7 @@ $env:JIUGUAN_NODE = 'C:/Program Files/nodejs/node.exe'
 
 - 已有真机记录覆盖独立启动、角色导入、模拟模型普通/SSE 请求、聊天保存、强制停止后恢复，以及多轮界面和键盘检查。
 - 深色界面的历史验收覆盖 320–768px 布局、预设/世界书编辑、原版模型请求一致性，以及 vivo V2520A 上的安装版截图。
-- 具体版本、设备和未测范围见 [实测记录](docs/UPSTREAM-STATUS.md)；本次发布检查见 [1.2.18 发布说明](docs/RELEASE-1.2.18.md)。历史测试不自动代表每个新版本都已重新验收。
+- 具体版本、设备和未测范围见 [实测记录](docs/UPSTREAM-STATUS.md)；本次发布检查见 [1.2.20 发布说明](docs/RELEASE-1.2.20.md)。历史测试不自动代表每个新版本都已重新验收。
 
 准备好上游源码与 Chromium 后，可运行：
 

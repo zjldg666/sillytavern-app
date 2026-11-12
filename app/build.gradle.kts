@@ -23,8 +23,8 @@ android {
         applicationId = "io.jiuguan.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 138
-        versionName = "1.2.18"
+        versionCode = 140
+        versionName = "1.2.20"
         ndk { abiFilters += "arm64-v8a" }
     }
     signingConfigs.getByName("debug") {

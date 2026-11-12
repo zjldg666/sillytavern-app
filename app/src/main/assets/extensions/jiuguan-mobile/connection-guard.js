@@ -11,6 +11,41 @@ export async function installConnectionGuard() {
     const manager = () => extension_settings.connectionManager;
     const profileById = id => manager().profiles.find(p => p.id === id);
     const currentId = () => manager().selectedProfile || '';
+    let namingQueue = Promise.resolve();
+    function syncSecretNames() {
+        // 始终按稳定 ID 绑定；多个方案共用一个密钥时列出全部方案名，不来回覆盖。
+        namingQueue = namingQueue.then(async () => {
+            const owners = new Map();
+            const allSecrets = Object.values(secrets.secret_state).filter(Array.isArray).flat();
+            for (const profile of manager().profiles) {
+                if (!profile.name || profile.exclude?.includes('secret-id')) continue;
+                let id = profile['secret-id'];
+                if (!id) continue;
+                if (!allSecrets.some(secret => secret.id === id)) {
+                    const candidates = allSecrets.filter(secret => secret.label === id);
+                    if (candidates.length !== 1) continue;
+                    id = candidates[0].id;
+                    profile['secret-id'] = id;
+                    api.saveSettingsDebounced();
+                }
+                const names = owners.get(id) || new Set(); names.add(profile.name); owners.set(id, names);
+            }
+            for (const [key, entries] of Object.entries(secrets.secret_state)) {
+                if (!Array.isArray(entries)) continue;
+                for (const secret of entries) {
+                    const names = owners.get(secret.id);
+                    if (!names) continue;
+                    const label = [...names].sort((a, b) => a.localeCompare(b)).join(' / ');
+                    if (secret.label === label) continue;
+                    await secrets.renameSecret(key, secret.id, label);
+                    if (secrets.secret_state[key]?.find(entry => entry.id === secret.id)?.label !== label) {
+                        warn('密钥名称同步失败，密钥内容与方案配置保留；下次保存方案时会重试。');
+                    }
+                }
+            }
+        }).catch(() => warn('密钥名称暂时无法同步，请稍后重新保存方案。'));
+        return namingQueue;
+    }
     let operation = null;
     let pendingCommand = false;
     const warn = message => window.toastr.warning(message, '连接方案', { preventDuplicates: true });
@@ -24,6 +59,31 @@ export async function installConnectionGuard() {
     status.setAttribute('aria-live', 'polite');
     status.hidden = true;
     select.parentElement.after(status);
+    const note = document.createElement('div');
+    note.id = 'jg-connection-note';
+    note.setAttribute('role', 'status');
+    status.after(note);
+
+    // 输入框中的新密钥还未写入原版密钥库。此时保存方案只会读到旧 secret-id。
+    // 不复制密钥到方案或扩展设置，也不替用户丢弃尚未保存的输入。
+    function pendingSecretProblem() {
+        return api.main_api === 'openai' && oai_settings.chat_completion_source === 'custom' &&
+            document.getElementById('api_key_custom')?.value.trim()
+            ? '密钥尚未保存。请先点击“连接”，等待完成后再保存、新建或切换方案；如不需要此密钥，请先清空输入框。' : '';
+    }
+    function sharedMessage(profile) {
+        const labels = { api: 'API 类型', 'api-url': 'API 地址', model: '模型', 'secret-id': '密钥' };
+        const shared = (profile?.exclude || []).filter(field => labels[field]).map(field => labels[field]);
+        return shared.length ? `“${profile.name}”已排除${shared.join('、')}，切换时会沿用当前值。若要独立保存，请在方案编辑中勾选这些项目，填入正确内容后保存。` : '';
+    }
+    function refreshNote() {
+        const profile = profileById(currentId());
+        const changed = profile && (!matches(profile) || pendingSecretProblem());
+        const guidance = changed
+            ? `当前修改尚未保存到“${profile.name}”。点击保存会覆盖该方案；要配置另一方案，请点击新建。`
+            : '修改地址、模型或密钥后，请保存到当前方案，或新建为另一方案。仅点击“连接”不会更新已保存的方案。';
+        note.textContent = sharedMessage(profile) || guidance;
+    }
 
     function problem(profile) {
         if (!profile) return '';
@@ -60,7 +120,8 @@ export async function installConnectionGuard() {
         operation = token;
         select.setAttribute('aria-busy', 'true');
         status.hidden = false;
-        status.textContent = kind === 'update' ? '正在保存连接方案…' : '正在加载连接方案，请稍候…';
+        status.textContent = kind === 'connect' ? '正在连接并保存密钥，请稍候…'
+            : kind === 'update' ? '正在保存连接方案…' : '正在加载连接方案，请稍候…';
         token.timer = setTimeout(() => {
             if (operation !== token) return;
             token.timedOut = true;
@@ -77,6 +138,7 @@ export async function installConnectionGuard() {
         token.resolve(true);
         select.removeAttribute('aria-busy');
         status.hidden = true;
+        refreshNote();
     }
     const cancel = event => { event.preventDefault(); event.stopImmediatePropagation(); };
     const controls = '#rm_api_block, #openai_api, #ai-config-block, #settings_preset_openai';
@@ -91,13 +153,15 @@ export async function installConnectionGuard() {
             cancel(event); select.value = currentId(); blocked(); return;
         }
         const profile = profileById(select.value);
-        const error = problem(profile);
+        const error = pendingSecretProblem() || problem(profile);
         if (error) {
             cancel(event); select.value = currentId(); warn(error); return;
         }
         if (select.value && !profile) {
             cancel(event); select.value = currentId(); warn('该连接方案已不存在，请重新选择。'); return;
         }
+        const sharing = sharedMessage(profile);
+        if (sharing) warn(sharing);
         begin('load', select.value, profile?.name || '<None>');
     }, true);
 
@@ -105,9 +169,32 @@ export async function installConnectionGuard() {
     document.addEventListener('click', event => {
         const target = event.target instanceof Element ? event.target : null;
         if (!target) return;
+        const connect = target.closest('#api_button_openai');
         const control = target.closest('#update_connection_profile, #reload_connection_profile, #create_connection_profile, #edit_connection_profile, #delete_connection_profile');
-        if (operation && (control || target.closest('#send_but') || (event.isTrusted && target.closest(controls)))) {
+        if (operation && (connect || control || target.closest('#send_but') || (event.isTrusted && target.closest(controls)))) {
             cancel(event); blocked(); return;
+        }
+        if (connect) {
+            cancel(event);
+            const token = begin('connect', currentId(), profileById(currentId())?.name || '<None>');
+            // 原版的 jQuery 连接处理器返回 Promise，覆盖密钥写入和模型列表读取。
+            // triggerHandler 不再派发原生点击，因此既能等待完整流程，也不会重复连接。
+            Promise.resolve().then(() => window.jQuery(connect).triggerHandler('click')).then(() => {
+                finish(token);
+                const error = pendingSecretProblem();
+                if (error) warn(error);
+            }).catch(() => {
+                clearTimeout(token.timer);
+                token.failed = true;
+                token.resolve(false);
+                status.textContent = busyMessage();
+                warn(busyMessage());
+            });
+            return;
+        }
+        if (control) {
+            const error = pendingSecretProblem();
+            if (error) { cancel(event); warn(error); return; }
         }
         if (!control || !['update_connection_profile', 'reload_connection_profile'].includes(control.id)) return;
         const profile = profileById(currentId());
@@ -130,6 +217,7 @@ export async function installConnectionGuard() {
 
     api.eventSource.makeFirst(api.event_types.CONNECTION_PROFILE_LOADED, name => {
         const token = operation;
+        if (token?.kind === 'connect') return;
         if (!token || name !== token.name || currentId() !== token.id) return;
         // 下一轮任务复核关键字段；密钥切换失败时原版也可能发出 loaded。
         setTimeout(() => {
@@ -160,6 +248,8 @@ export async function installConnectionGuard() {
         command.callback = async (args, value) => {
             if (name === 'profile' && !value) return original(args, value);
             if (operation || pendingCommand) { blocked(); throw new Error('连接方案正在加载或保存，请稍后重试。'); }
+            const pendingError = pendingSecretProblem();
+            if (pendingError) { warn(pendingError); throw new Error(pendingError); }
             if (name === 'profile' && value !== '<None>') {
                 const profile = manager().profiles.find(p => p.name === value) || new Fuse(manager().profiles, { keys: ['name'] }).search(value)[0]?.item;
                 const error = problem(profile);
@@ -175,5 +265,27 @@ export async function installConnectionGuard() {
             finally { pendingCommand = false; if (token) finish(token); }
         };
     }
-    return { allowInteraction };
+    document.addEventListener('input', event => {
+        if (event.target instanceof Element && event.target.matches('#custom_api_url_text, #custom_model_id, #api_key_custom')) {
+            setTimeout(refreshNote, 0);
+        }
+    });
+    for (const event of [api.event_types.CONNECTION_PROFILE_CREATED, api.event_types.CONNECTION_PROFILE_UPDATED,
+        api.event_types.CONNECTION_PROFILE_LOADED, api.event_types.SECRET_WRITTEN, api.event_types.SECRET_ROTATED]) {
+        if (event) api.eventSource.on(event, () => { setTimeout(refreshNote, 0); });
+    }
+    for (const event of [api.event_types.CONNECTION_PROFILE_CREATED, api.event_types.CONNECTION_PROFILE_UPDATED,
+        api.event_types.CONNECTION_PROFILE_DELETED]) api.eventSource.on(event, syncSecretNames);
+    // 连接时尚未命名的新方案暂标为“未绑定方案”；创建/保存/改名后统一跟随方案名。
+    api.eventSource.on(api.event_types.SECRET_WRITTEN, async key => {
+        const active = secrets.secret_state[key]?.find(entry => entry.active);
+        if (!active) return;
+        if (!manager().profiles.some(profile => profile['secret-id'] === active.id)) {
+            await secrets.renameSecret(key, active.id, '未绑定方案');
+        }
+        await syncSecretNames();
+    });
+    void syncSecretNames();
+    refreshNote();
+    return { allowInteraction, syncSecretNames };
 }

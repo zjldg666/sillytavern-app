@@ -149,6 +149,8 @@
     const notify = message => window.toastr.info(message);
     let view = 'chats', homeTab = 'chats', panelReturn = 'settings', chatReturn = 'chats';
     let busy = false, navigating = false, currentPanel, recent = [], query = '', requestId = 0;
+    let recentLoaded = false, recentLoadedAt = 0, recentVersion = 0, recentRequest;
+    const invalidateRecent = () => { recentVersion++; recentLoadedAt = 0; recentRequest = null; };
     let homeNavigation = Promise.resolve();
     let worldEditorName = '', worldListScroll = 0;
     document.body.dataset.jgWorldMode = 'list';
@@ -271,7 +273,7 @@
             const open = button(`与 ${char.name} 聊天`, null, () => openRole(char.avatar), 'jg-role-open');
             open.replaceChildren();
             const portrait = node('div', 'jg-portrait');
-            const img = node('img'); img.src = `/characters/${encodeURIComponent(char.avatar)}`; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+            const img = node('img'); img.src = ctx().getThumbnailUrl('avatar', char.avatar); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
             img.addEventListener('error', () => { img.hidden = true; }, { once: true });
             portrait.append(img);
             const copy = node('div', 'jg-role-copy'); copy.append(node('h2', '', char.name));
@@ -293,11 +295,22 @@
     }
 
     async function loadRecent() {
-        const response = await fetch('/api/chats/recent', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({}), cache: 'no-store' });
-        if (!response.ok) throw new Error('聊天列表暂时无法读取，请重试。');
-        const value = await response.json();
-        if (!Array.isArray(value)) throw new Error('聊天列表格式异常。');
-        return value;
+        if (recentLoaded && Date.now() - recentLoadedAt < 5000) return recent;
+        if (recentRequest) return recentRequest;
+        const version = recentVersion;
+        const pending = (async () => {
+            const response = await fetch('/api/chats/recent', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({}), cache: 'no-store' });
+            if (!response.ok) throw new Error('聊天列表暂时无法读取，请重试。');
+            const value = await response.json();
+            if (!Array.isArray(value)) throw new Error('聊天列表格式异常。');
+            // 删除/新建发生在请求期间时，不让旧列表覆盖操作结果。
+            if (version !== recentVersion) return loadRecent();
+            recent = value; recentLoaded = true; recentLoadedAt = Date.now();
+            return value;
+        })();
+        recentRequest = pending;
+        try { return await pending; }
+        finally { if (recentRequest === pending) recentRequest = null; }
     }
 
     async function renderChats() {
@@ -310,11 +323,13 @@
         function fill() {
             list.replaceChildren();
             // 同一角色有多段会话时才显示会话名，避免列表混淆又保持简洁。
-            const owners = recent.map(item => item.avatar || item.group || '');
-            const repeated = new Set(owners.filter((owner, index) => owners.indexOf(owner) !== index));
+            const owners = new Map();
+            for (const item of recent) { const owner = item.avatar || item.group || ''; owners.set(owner, (owners.get(owner) || 0) + 1); }
+            const characters = new Map(ctx().characters.map(char => [char.avatar, char]));
+            const groups = new Map(ctx().groups.map(group => [group.id, group]));
             for (const item of recent) {
-                const character = ctx().characters.find(char => char.avatar === item.avatar);
-                const group = ctx().groups.find(group => group.id === item.group);
+                const character = characters.get(item.avatar);
+                const group = groups.get(item.group);
                 const name = character?.name || group?.name || '助手对话';
                 const file = item.file_name.replace(/\.jsonl$/, '');
                 const key = chatKey(item, file), alias = chatNames[key];
@@ -329,13 +344,14 @@
                 const line = node('div', 'jg-chat-title');
                 const timestamp = ctx().timestampToMoment(item.last_mes);
                 line.append(node('strong', '', alias || name), node('time', '', timestamp.isValid() ? shortTime(timestamp) : ''));
-                text.append(line, node('p', '', plain(item.mes).slice(0, 180) || '暂无消息'));
+                text.append(line, node('p', '', plain(String(item.mes ?? '').slice(0, 4000)).slice(0, 180) || '暂无消息'));
                 if (alias) text.append(node('small', '', name));
-                else if (repeated.has(item.avatar || item.group || '')) text.append(node('small', '', file));
+                else if (owners.get(item.avatar || item.group || '') > 1) text.append(node('small', '', file));
                 row.append(avatar, text); list.append(row);
             }
             if (!list.children.length) empty(list, filter ? '没有找到会话' : '还没有聊天', filter ? '试试角色名或会话名。' : '选一位角色，开启第一段对话。', button('去看角色', 'people', () => show('roles'), 'jg-primary'));
         }
+        if (recentLoaded) fill();
         try {
             const data = await loadRecent();
             if (view !== 'chats' || serial !== requestId) return;
@@ -438,17 +454,36 @@
 
     async function guarded(action) {
         if (busy) return;
-        if (api.isGenerating() || api.isChatSaving) { notify('请等待当前生成或保存完成后再切换会话。'); return; }
+        if (api.isGenerating()) { notify('请等待当前生成完成后再切换会话。'); return; }
         busy = true; navigating = true; shell.setAttribute('aria-busy', 'true');
-        try { await action(); }
+        try {
+            const deadline = Date.now() + 10000;
+            while (api.isChatSaving) {
+                if (Date.now() > deadline) throw new Error('当前会话仍在保存，请稍后重试。');
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            if (api.isGenerating()) throw new Error('请等待当前生成完成后再操作。');
+            await action();
+        }
         catch (error) { window.toastr.error(error.message || '操作失败，请重试。'); console.error('[酒馆 UI]', error); }
         finally { busy = false; navigating = false; shell.setAttribute('aria-busy', 'false'); }
     }
 
-    async function selectRole(avatar) {
+    async function selectRole(avatar, file) {
         const index = ctx().characters.findIndex(char => char.avatar === avatar);
         if (index < 0) throw new Error('这个角色已不存在，请刷新角色列表。');
-        await ctx().selectCharacterById(index, { switchMenu: false });
+        const alreadySelected = String(ctx().characterId) === String(index) && !ctx().groupId;
+        if (file && alreadySelected) {
+            if (ctx().chatId !== file) await ctx().openCharacterChat(file);
+        } else {
+            // 先选定目标会话，避免先加载角色上次的聊天、再清空并加载目标。
+            await api.unshallowCharacter(index);
+            const character = ctx().characters[index], previous = character.chat;
+            if (file) character.chat = file;
+            try { await ctx().selectCharacterById(index, { switchMenu: false }); }
+            catch (error) { character.chat = previous; throw error; }
+            if (file) await api.updateRemoteChatName(index, file);
+        }
         if (String(ctx().characterId) !== String(index) || ctx().groupId) throw new Error('当前会话暂时不能切换，请稍后重试。');
         api.setActiveCharacter(avatar); ctx().saveSettingsDebounced();
     }
@@ -459,13 +494,8 @@
 
     function openRole(avatar) {
         return guarded(async () => {
-            const latest = (await loadRecent()).find(item => item.avatar === avatar);
             chatReturn = homeTab;
             await selectRole(avatar);
-            if (latest) {
-                const file = latest.file_name.replace(/\.jsonl$/, '');
-                if (ctx().chatId !== file) await ctx().openCharacterChat(file);
-            }
             await refreshDisplayLimit(); await closeDrawers(); show('chat'); ctx().scrollChatToBottom();
         });
     }
@@ -474,8 +504,7 @@
         return guarded(async () => {
             const file = item.file_name.replace(/\.jsonl$/, ''); chatReturn = 'chats';
             if (item.avatar) {
-                await selectRole(item.avatar);
-                if (ctx().chatId !== file) await ctx().openCharacterChat(file);
+                await selectRole(item.avatar, file);
             } else if (item.group) {
                 await groupApi.openGroupById(item.group);
                 if (ctx().groupId !== item.group) throw new Error('群聊暂时无法切换。');
@@ -722,9 +751,7 @@
         const char = ctx().characters.find(char => char.avatar === avatar); if (!char) return;
         sheet(char.name, [
             ['继续聊天', 'chat', () => openRole(avatar)],
-            ['新开对话', 'plus', () => guarded(async () => {
-                chatReturn = 'roles'; await selectRole(avatar); await closeDrawers(); show('chat'); $('#option_start_new_chat')?.click();
-            })],
+            ['新开对话', 'plus', () => startNewChat(avatar)],
             ['编辑角色', 'settings', () => guarded(async () => {
                 await selectRole(avatar); await openPanel('rightNavHolder', '编辑角色', () => ctx().selectCharacterById(ctx().characterId));
             })],
@@ -779,26 +806,70 @@
                 const index = ctx().characters.findIndex(char => char.avatar === item.avatar);
                 if (index < 0) throw new Error('这个角色已不存在，请刷新列表。');
                 const current = !ctx().groupId && String(ctx().characterId) === String(index) && ctx().chatId === file;
+                // 先解除内存中的当前会话并取消待保存任务，再删文件；不自动新建空白会话。
+                if (current && !await api.closeCurrentChat()) throw new Error('当前会话无法关闭，请稍后重试。');
                 await api.deleteCharacterChatByName(String(index), file);
-                // 与原版删除当前聊天一致：换到剩余的最近聊天，避免内存中的旧聊天被再次保存。
-                if (current) await api.replaceCurrentChat();
+                const response = await fetch('/api/characters/chats', { method: 'POST', headers: ctx().getRequestHeaders(), body: JSON.stringify({ avatar_url: item.avatar }) });
+                if (!response.ok || Object.values(await response.json()).some(entry => entry?.file_name === item.file_name)) {
+                    throw new Error('删除没有成功，聊天记录仍保留，请重试。');
+                }
             } else if (item.group) {
-                if (ctx().groupId === item.group && ctx().chatId === file) await groupApi.deleteGroupChat(item.group, file);
-                else await groupApi.deleteGroupChatByName(item.group, file);
+                const group = ctx().groups.find(entry => String(entry.id) === String(item.group));
+                if (!group) throw new Error('这个群聊已不存在，请刷新列表。');
+                const snapshot = structuredClone(group);
+                if (String(ctx().groupId) === String(item.group) && ctx().chatId === file && !await api.closeCurrentChat()) {
+                    throw new Error('当前会话无法关闭，请稍后重试。');
+                }
+                await groupApi.deleteGroupChatByName(group.id, file);
+                const response = await fetch('/api/groups/all', { method: 'POST', headers: ctx().getRequestHeaders(), body: '{}' });
+                const saved = response.ok ? (await response.json()).find(entry => String(entry.id) === String(item.group)) : null;
+                if (!saved || saved.chats?.includes(file)) {
+                    Object.assign(group, snapshot);
+                    throw new Error('群聊删除未完成，请重新载入列表后重试。');
+                }
             } else {
                 throw new Error('这是一条未关联角色的旧会话，暂时无法删除。');
             }
-            if ((await loadRecent()).some(entry => entry.file_name === item.file_name && entry.avatar === item.avatar && entry.group === item.group)) {
-                throw new Error('删除没有成功，请检查后重试。');
-            }
+            invalidateRecent();
+            recent = recent.filter(entry => !(entry.file_name === item.file_name && entry.avatar === item.avatar && entry.group === item.group));
             delete chatNames[key]; api.saveSettingsDebounced();
             window.toastr.success('已删除这段聊天');
         });
         if (view === 'chats') renderChats();
     }
+    async function preserveCurrentChat() {
+        const context = ctx();
+        if (!context.groupId && context.characterId === undefined) return;
+        const character = context.characters[context.characterId];
+        const { compressRequest } = await import('/scripts/request-compression.js');
+        const chat = [{ user_name: 'unused', character_name: 'unused', chat_metadata: api.chat_metadata }, ...context.chat];
+        const body = context.groupId ? { id: context.chatId, chat, force: false }
+            : { avatar_url: character.avatar, ch_name: character.name, file_name: context.chatId, chat, force: false };
+        api.cancelDebouncedChatSave();
+        // 原版 saveChatConditional 会吞掉写入错误；新建前直接确认原版保存接口的结果。
+        const request = await compressRequest({ method: 'POST', headers: context.getRequestHeaders(), body: JSON.stringify(body) });
+        const response = await fetch(context.groupId ? '/api/chats/group/save' : '/api/chats/save', request);
+        if (!response.ok) throw new Error('原会话保存失败，已取消新建。请保持当前页面并重试。');
+    }
+    function startNewChat(avatar) {
+        return guarded(async () => {
+            const confirmed = await ctx().Popup.show.confirm('新开一段对话？', '已有对话会完整保留，新对话单独保存，可以随时从聊天列表切换回来。', { okButton: '新建', cancelButton: '取消' });
+            if (!confirmed) return;
+            await preserveCurrentChat();
+            if (avatar) { chatReturn = 'roles'; await selectRole(avatar); }
+            if (ctx().characterId === undefined && !ctx().groupId) throw new Error('请先选择一个角色。');
+            // 手机导航不依赖右侧角色编辑菜单，清除残留的“创建角色”状态。
+            api.setMenuType('character_edit');
+            const previous = ctx().chatId;
+            await api.doNewChat({ deleteCurrentChat: false });
+            if (ctx().chatId === previous) throw new Error('新会话未创建，原对话已保留，请重试。');
+            invalidateRecent();
+            await closeDrawers(); show('chat'); ctx().scrollChatToBottom();
+        });
+    }
     function chatMenu() {
         sheet('聊天', [
-            ['新开对话', 'plus', () => $('#option_start_new_chat')?.click()],
+            ['新开对话', 'plus', () => startNewChat()],
             ['管理当前角色的会话', 'chat', () => $('#option_select_chat')?.click()],
             ['角色与群聊设置', 'people', () => openPanel('rightNavHolder', '角色与群聊设置')],
             ['模型 API', 'plug', () => openPanel('sys-settings-button', '模型 API')],
@@ -858,6 +929,7 @@
 
     let refreshTimer;
     const refresh = () => {
+        invalidateRecent();
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => {
             if (busy) return;
@@ -867,7 +939,8 @@
         }, 200);
     };
     api.eventSource.on(api.event_types.PERSONA_CHANGED, () => { if (view === 'settings' && !busy) renderSettings(); });
-    for (const event of ['CHARACTER_PAGE_LOADED', 'CHARACTER_EDITED', 'CHARACTER_DELETED', 'CHARACTER_DUPLICATED', 'CHAT_CREATED', 'CHAT_DELETED', 'CHAT_RENAMED', 'GROUP_UPDATED']) api.eventSource.on(api.event_types[event], refresh);
+    for (const event of ['CHARACTER_PAGE_LOADED', 'CHARACTER_EDITED', 'CHARACTER_DELETED', 'CHARACTER_DUPLICATED', 'CHAT_CREATED', 'CHAT_DELETED', 'CHAT_RENAMED', 'GROUP_UPDATED', 'GROUP_CHAT_CREATED', 'GROUP_CHAT_DELETED']) api.eventSource.on(api.event_types[event], refresh);
+    for (const event of ['MESSAGE_SENT', 'MESSAGE_RECEIVED', 'MESSAGE_EDITED', 'MESSAGE_DELETED', 'GENERATION_ENDED']) api.eventSource.on(api.event_types[event], invalidateRecent);
     api.eventSource.on(api.event_types.CHAT_CHANGED, () => {
         if (navigating || busy) return;
         if (ctx().characterId !== undefined || ctx().groupId) { chatReturn = homeTab; void closeDrawers(); show('chat'); }

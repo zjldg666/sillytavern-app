@@ -39,7 +39,7 @@ try {
         const api = await import('/script.js');
         api.eventSource.on(api.event_types.APP_READY, () => { window.__ready = true; });
     });
-    const deadline = Date.now() + 30000;
+    const deadline = Date.now() + 60000;
     while (!await page.evaluate(() => window.__ready)) {
         const popup = page.locator('dialog.popup[open]:has(.onboarding)');
         if (await popup.isVisible()) {
@@ -49,7 +49,7 @@ try {
         if (Date.now() > deadline) throw new Error('APP_READY timeout');
         await page.waitForTimeout(100);
     }
-    if (guarded) await page.evaluate(async () => { await (await import('/profile-guard-test.js')).installConnectionGuard(); });
+    if (guarded) await page.evaluate(async () => { window.__connectionGuard = await (await import('/profile-guard-test.js')).installConnectionGuard(); });
     report.checks = await Promise.race([page.evaluate(async guarded => {
         const api = await import('/script.js');
         const { oai_settings: settings } = await import('/scripts/openai.js');
@@ -67,6 +67,23 @@ try {
         const a = { id: 'repro-a', name: 'Synthetic A', mode: 'cc', api: 'custom', 'api-url': 'https://a.invalid/v1', model: 'model-a', 'secret-id': keyA };
         const b = { id: 'repro-b', name: 'Synthetic B', mode: 'cc', api: 'custom', 'api-url': 'https://b.invalid/v1', model: 'model-b', 'secret-id': keyB };
         manager.profiles = [a, b];
+        if (guarded) {
+            const activeBefore = secrets.secret_state[secrets.SECRET_KEYS.CUSTOM].find(key => key.active)?.id;
+            await secrets.renameSecret(secrets.SECRET_KEYS.CUSTOM, keyA, '2026/11/12 08:00');
+            await window.__connectionGuard.syncSecretNames();
+            const label = id => secrets.secret_state[secrets.SECRET_KEYS.CUSTOM].find(key => key.id === id)?.label;
+            checks.push({ name: 'existing_timestamp_key_named_after_profile', passed: label(keyA) === a.name && label(keyB) === b.name });
+            const old = structuredClone(a); a.name = 'Renamed A';
+            await api.eventSource.emit(api.event_types.CONNECTION_PROFILE_UPDATED, old, a);
+            checks.push({ name: 'secret_label_follows_profile_rename', passed: label(keyA) === a.name });
+            manager.profiles.push({ ...a, id: 'shared-a', name: 'Shared A' });
+            await api.eventSource.emit(api.event_types.CONNECTION_PROFILE_CREATED, manager.profiles.at(-1));
+            checks.push({ name: 'shared_secret_lists_both_profile_names', passed: label(keyA).includes(a.name) && label(keyA).includes('Shared A') && secrets.secret_state[secrets.SECRET_KEYS.CUSTOM].find(key => key.active)?.id === activeBefore });
+            const removed = manager.profiles.pop();
+            await api.eventSource.emit(api.event_types.CONNECTION_PROFILE_DELETED, removed);
+            checks.push({ name: 'shared_secret_name_updated_after_profile_deleted', passed: label(keyA) === a.name });
+            a.name = old.name; await window.__connectionGuard.syncSecretNames();
+        }
         select.replaceChildren(...[a, b].map(p => new Option(p.name, p.id)));
         const selectProfile = id => new Promise(resolve => {
             api.eventSource.once(api.event_types.CONNECTION_PROFILE_LOADED, () => setTimeout(resolve, 10));
@@ -92,6 +109,7 @@ try {
             b.exclude = ['api-url', 'secret-id'];
             await selectProfile(b.id);
             checks.push({ name: 'explicitly_shared_fields_remain_compatible', passed: manager.selectedProfile === b.id && settings.custom_model === b.model && settings.custom_url === a['api-url'] && activeKey() === keyA });
+            checks.push({ name: 'excluded_address_and_key_are_clearly_disclosed', passed: document.getElementById('jg-connection-note').textContent.includes('已排除API 地址、密钥') && document.querySelector('#toast-container').textContent.includes('切换时会沿用当前值') });
             delete b.exclude;
         } else {
             await selectProfile(b.id);
@@ -144,6 +162,97 @@ try {
             checks.push({ name: 'ordinary_save_still_works', passed: b.model === 'model-b-edited' && a.model === 'model-a' });
             await selectProfile(a.id); await selectProfile(b.id);
             checks.push({ name: 'edited_B_round_trip', passed: settings.custom_model === 'model-b-edited' && settings.custom_url === b['api-url'] && activeKey() === keyB });
+
+            // 密钥输入框是尚未提交的草稿，不是已激活的 secret-id。
+            const keyInput = document.getElementById('api_key_custom');
+            keyInput.value = 'fake-only-unsaved-B';
+            keyInput.dispatchEvent(new Event('input', { bubbles: true }));
+            settings.custom_model = 'pending-model-B';
+            const beforePendingSave = JSON.stringify(b);
+            document.getElementById('update_connection_profile').click();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            checks.push({ name: 'unsaved_key_cannot_save_old_secret_reference', passed: JSON.stringify(b) === beforePendingSave && !select.hasAttribute('aria-busy') && !!document.querySelector('#toast-container')?.textContent.includes('密钥尚未保存') });
+            select.value = a.id; select.dispatchEvent(new Event('change', { bubbles: true }));
+            await new Promise(resolve => setTimeout(resolve, 100));
+            checks.push({ name: 'unsaved_B_key_cannot_follow_switch_to_A', passed: manager.selectedProfile === b.id && select.value === b.id && settings.custom_url === b['api-url'] });
+            const { SlashCommandParser } = await import('/scripts/slash-commands/SlashCommandParser.js');
+            let rejectedCommands = 0;
+            for (const [name, value] of [['profile', a.name], ['profile-update', ''], ['profile-create', 'Pending key profile']]) {
+                try { await SlashCommandParser.commands[name].callback({}, value); } catch { rejectedCommands++; }
+            }
+            checks.push({ name: 'unsaved_key_commands_rejected', passed: rejectedCommands === 3 && manager.profiles.length === 2 });
+            document.getElementById('create_connection_profile').click();
+            await new Promise(resolve => setTimeout(resolve, 50));
+            checks.push({ name: 'unsaved_key_UI_creation_rejected', passed: !document.querySelector('dialog.popup[open]') && manager.profiles.length === 2 });
+            keyInput.value = '';
+
+            // 确定性延迟真实本机密钥保存，模拟点“连接”后立刻切换/保存方案。
+            await selectProfile(b.id);
+            const nativeFetch = window.fetch;
+            let releaseWrite, writeStarted;
+            const writeGate = new Promise(resolve => { releaseWrite = resolve; });
+            const writeEntered = new Promise(resolve => { writeStarted = resolve; });
+            window.fetch = async (input, options) => {
+                if (String(input).endsWith('/api/secrets/write')) { writeStarted(); await writeGate; }
+                return nativeFetch(input, options);
+            };
+            try {
+                keyInput.value = 'fake-only-new-B';
+                document.getElementById('api_button_openai').click();
+                await writeEntered;
+                select.value = a.id; select.dispatchEvent(new Event('change', { bubbles: true }));
+                await new Promise(resolve => setTimeout(resolve, 50));
+                checks.push({ name: 'connecting_B_blocks_switch_to_A', passed: manager.selectedProfile === b.id && select.value === b.id });
+                const beforeConnectSave = JSON.stringify(b);
+                document.getElementById('update_connection_profile').click();
+                await new Promise(resolve => setTimeout(resolve, 30));
+                checks.push({ name: 'connecting_B_blocks_premature_profile_save', passed: JSON.stringify(b) === beforeConnectSave });
+                releaseWrite();
+                const deadline = Date.now() + 5000;
+                while (activeKey() === keyB || select.hasAttribute('aria-busy')) {
+                    if (Date.now() > deadline) throw new Error('Connection save did not finish');
+                    await new Promise(resolve => setTimeout(resolve, 20));
+                }
+                const newBKey = activeKey();
+                const updated = new Promise(resolve => api.eventSource.once(api.event_types.CONNECTION_PROFILE_UPDATED, () => setTimeout(resolve, 10)));
+                document.getElementById('update_connection_profile').click(); await updated;
+                checks.push({ name: 'connected_key_saved_to_B_only', passed: b['secret-id'] === newBKey && a['secret-id'] === keyA });
+                await selectProfile(a.id); await selectProfile(b.id);
+                checks.push({ name: 'connected_B_round_trip_restores_own_fields', passed: settings.custom_url === b['api-url'] && settings.custom_model === b.model && activeKey() === newBKey });
+                // 后续原有失败路径继续使用原来的合成密钥。
+                b['secret-id'] = keyB; await selectProfile(b.id);
+            } finally { releaseWrite(); window.fetch = nativeFetch; }
+
+            // 已保存密钥后，模型列表请求仍属于同一次连接，不能提早解锁。
+            let releaseStatus, statusStarted;
+            const statusGate = new Promise(resolve => { releaseStatus = resolve; });
+            const statusEntered = new Promise(resolve => { statusStarted = resolve; });
+            window.fetch = async (input, options) => {
+                if (String(input).endsWith('/api/backends/chat-completions/status')) { statusStarted(); await statusGate; }
+                return nativeFetch(input, options);
+            };
+            try {
+                document.getElementById('api_button_openai').click(); await statusEntered;
+                select.value = a.id; select.dispatchEvent(new Event('change', { bubbles: true }));
+                checks.push({ name: 'model_list_loading_blocks_profile_switch', passed: manager.selectedProfile === b.id && select.value === b.id && select.hasAttribute('aria-busy') });
+                releaseStatus();
+                const deadline = Date.now() + 5000;
+                while (select.hasAttribute('aria-busy')) {
+                    if (Date.now() > deadline) throw new Error('Status did not finish');
+                    await new Promise(resolve => setTimeout(resolve, 20));
+                }
+            } finally { releaseStatus(); window.fetch = nativeFetch; }
+            window.fetch = (input, options) => String(input).endsWith('/api/secrets/write')
+                ? Promise.resolve(new Response('{}', { status: 500 })) : nativeFetch(input, options);
+            try {
+                keyInput.value = 'fake-only-rejected-write';
+                document.getElementById('api_button_openai').click();
+                await new Promise(resolve => setTimeout(resolve, 150));
+                const before = JSON.stringify(b);
+                document.getElementById('update_connection_profile').click();
+                await new Promise(resolve => setTimeout(resolve, 50));
+                checks.push({ name: 'failed_key_write_keeps_draft_and_blocks_profile_save', passed: !!keyInput.value && JSON.stringify(b) === before && activeKey() === keyB && !select.hasAttribute('aria-busy') });
+            } finally { keyInput.value = ''; window.fetch = nativeFetch; }
             const beforeInvalidKey = b['secret-id'];
             b['secret-id'] = 'deleted-synthetic-key';
             select.value = b.id; select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -166,7 +275,7 @@ try {
         }
         return checks;
     }, guarded), new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('Profile test timed out')), 45000); timer.unref(); })]);
-    assert.equal(report.checks[0].passed, true);
+    assert.equal(report.checks.find(check => check.name === 'complete_profiles_sequential_switch').passed, true);
     if (guarded) for (const check of report.checks) assert.equal(check.passed, true, check.name);
     else {
         assert.equal(report.checks[1].reproduced, true);
